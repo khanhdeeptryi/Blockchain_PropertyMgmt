@@ -6,6 +6,7 @@ import NavBar from "./components/NavBar";
 import Dashboard from "./pages/Dashboard";
 import TokenPage from "./pages/Token";
 import NFTPage from "./pages/NFT";
+import AssetManagement from "./pages/AssetManagement";
 import "./App.css";
 
 function App() {
@@ -109,27 +110,52 @@ function App() {
   }
 
   async function loadNFTs(addr) {
+    console.log('📋 loadNFTs called for address:', addr);
     try {
       const provider = getProvider();
       if (!provider) throw new Error("Không tìm thấy MetaMask");
 
       const nft = new ethers.Contract(NFT_ADDRESS, NFT_ABI, provider);
-      const balance = await nft.balanceOf(addr);
-      const total = Number(balance);
+      console.log('📋 NFT contract created at:', NFT_ADDRESS);
+      
+      // Since the contract doesn't have ERC721Enumerable, we need to query Transfer events
+      console.log('📋 Querying Transfer events...');
+      const filter = nft.filters.Transfer(null, addr);
+      const events = await nft.queryFilter(filter, 0, 'latest');
+      console.log('📋 Found', events.length, 'transfer events to this address');
       
       const nfts = [];
-      for (let i = 0; i < total; i++) {
+      const seenTokenIds = new Set();
+      
+      for (const event of events) {
         try {
-          const tokenId = await nft.tokenOfOwnerByIndex(addr, i);
+          const tokenId = event.args.tokenId.toString();
+          
+          // Skip if we've already processed this token
+          if (seenTokenIds.has(tokenId)) continue;
+          seenTokenIds.add(tokenId);
+          
+          // Check if addr still owns this token
+          const currentOwner = await nft.ownerOf(tokenId);
+          if (currentOwner.toLowerCase() !== addr.toLowerCase()) {
+            console.log(`📋 Token ${tokenId} no longer owned by ${addr}`);
+            continue;
+          }
+          
+          console.log(`📋 Loading metadata for token ${tokenId}...`);
           const uri = await nft.tokenURI(tokenId);
-          nfts.push({ tokenId: tokenId.toString(), tokenURI: uri, owner: addr });
+          console.log(`📋 TokenURI for ${tokenId}:`, uri);
+          
+          nfts.push({ tokenId, tokenURI: uri, owner: addr });
         } catch (e) {
-          console.error('Error loading NFT:', e);
+          console.error('❌ Error loading NFT:', e);
         }
       }
+      
+      console.log('📋 Total NFTs loaded:', nfts.length, nfts);
       setNftList(nfts);
     } catch (err) {
-      console.error(err);
+      console.error('❌ loadNFTs error:', err);
     }
   }
 
@@ -197,6 +223,61 @@ function App() {
     }
   }
 
+  async function handleMintAsset(uploadData) {
+    console.log('🎨 handleMintAsset called with:', uploadData);
+    if (!account) {
+      addNotification('Cảnh báo', 'Hãy kết nối ví trước.', 'warning');
+      return;
+    }
+    try {
+      addNotification('Đang xử lý', 'Đang mint NFT tài sản...', 'pending');
+
+      const signer = await getSigner();
+      const nft = new ethers.Contract(NFT_ADDRESS, NFT_ABI, signer);
+
+      console.log('📝 Calling safeMint with to:', uploadData.to, 'tokenURI:', uploadData.tokenURI);
+      const tx = await nft.safeMint(uploadData.to, uploadData.tokenURI);
+      
+      console.log('✅ Transaction sent:', tx.hash);
+      addNotification('Đang chờ', `Giao dịch đã gửi: ${tx.hash}`, 'pending', tx.hash);
+      await tx.wait();
+
+      console.log('✅ Transaction confirmed:', tx.hash);
+      addNotification('Thành công', `Mint tài sản "${uploadData.metadata.name}" thành công!`, 'success', tx.hash);
+      
+      console.log('🔄 Reloading NFTs...');
+      await loadNFTs(account);
+      console.log('✅ NFTs reloaded');
+    } catch (err) {
+      console.error('❌ Mint error:', err);
+      addNotification('Lỗi', 'Lỗi mint tài sản: ' + (err?.shortMessage || err.message), 'error');
+    }
+  }
+
+  async function handleTransferAsset(tokenId, toAddress) {
+    if (!account) {
+      throw new Error('Hãy kết nối ví trước.');
+    }
+    try {
+      addNotification('Đang xử lý', 'Đang chuyển nhượng NFT...', 'pending');
+
+      const signer = await getSigner();
+      const nft = new ethers.Contract(NFT_ADDRESS, NFT_ABI, signer);
+
+      const tx = await nft.transferFrom(account, toAddress, tokenId);
+      
+      addNotification('Đang chờ', `Giao dịch đã gửi: ${tx.hash}`, 'pending', tx.hash);
+      await tx.wait();
+
+      addNotification('Thành công', `Chuyển nhượng NFT #${tokenId} thành công!`, 'success', tx.hash);
+      await loadNFTs(account);
+    } catch (err) {
+      console.error(err);
+      addNotification('Lỗi', 'Lỗi chuyển nhượng: ' + (err?.shortMessage || err.message), 'error');
+      throw err;
+    }
+  }
+
   return (
     <BrowserRouter>
       <div className="layout">
@@ -246,6 +327,19 @@ function App() {
                   setNftUri={setNftUri} 
                   handleMintNft={handleMintNft}
                   nftList={nftList}
+                />
+              }
+            />
+            <Route
+              path="/assets"
+              element={
+                <AssetManagement
+                  account={account}
+                  nftContract={null}
+                  nftList={nftList}
+                  onRefresh={() => account && loadNFTs(account)}
+                  onMintAsset={handleMintAsset}
+                  onTransferAsset={handleTransferAsset}
                 />
               }
             />

@@ -18,7 +18,7 @@ export default function NavBar({ account, networkOk, onConnect }) {
     <header className="navbar">
       <div className="brand">
         <span className="brand-icon">🔐</span>
-        <span className="brand-text">DApp Tài Sản</span>
+        <span className="brand-text">TokProp</span>
       </div>
 
       <nav className="nav-links">
@@ -30,6 +30,9 @@ export default function NavBar({ account, networkOk, onConnect }) {
         </NavLink>
         <NavLink to="/nft" className={({isActive}) => isActive ? 'active' : ''}>
           NFT Tài sản
+        </NavLink>
+        <NavLink to="/assets" className={({isActive}) => isActive ? 'active' : ''}>
+          Quản lý Tài sản
         </NavLink>
       </nav>
 

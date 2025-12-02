@@ -610,3 +610,497 @@
     padding: 0.5rem;
   }
 }
+
+/* Asset Management Styles */
+.asset-management .page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+}
+
+.header-actions {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.alert {
+  padding: 1rem;
+  border-radius: 8px;
+  margin-bottom: 1.5rem;
+}
+
+.alert-warning {
+  background: rgba(245, 158, 11, 0.15);
+  border: 1px solid var(--accent-warning);
+  color: var(--accent-warning);
+}
+
+.alert-info {
+  background: rgba(59, 130, 246, 0.15);
+  border: 1px solid var(--accent-primary);
+  color: var(--text-secondary);
+}
+
+.empty-state {
+  text-align: center;
+  padding: 4rem 2rem;
+}
+
+.empty-icon {
+  font-size: 5rem;
+  margin-bottom: 1rem;
+  opacity: 0.3;
+}
+
+/* Asset Upload Modal */
+.asset-upload-modal {
+  width: 100%;
+  max-width: 700px;
+}
+
+.upload-container {
+  background: var(--bg-card);
+  border-radius: 16px;
+  border: 1px solid var(--border-color);
+  box-shadow: var(--shadow-lg);
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.upload-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.5rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.upload-header h2 {
+  margin: 0;
+}
+
+.upload-body {
+  padding: 1.5rem;
+}
+
+.file-input {
+  width: 100%;
+  padding: 0.75rem;
+  border: 2px dashed var(--border-color);
+  border-radius: 8px;
+  background: var(--bg-secondary);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.file-input:hover {
+  border-color: var(--accent-primary);
+  background: var(--bg-hover);
+}
+
+.file-preview-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.file-preview-item {
+  text-align: center;
+}
+
+.preview-image {
+  width: 100%;
+  height: 100px;
+  object-fit: cover;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+}
+
+.preview-icon {
+  width: 100%;
+  height: 100px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 3rem;
+  background: var(--bg-tertiary);
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+}
+
+.preview-name {
+  display: block;
+  margin-top: 0.5rem;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  word-break: break-all;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.security-options {
+  background: var(--bg-tertiary);
+  padding: 1rem;
+  border-radius: 8px;
+}
+
+.radio-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.radio-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+}
+
+.radio-label input[type="radio"] {
+  width: auto;
+}
+
+.upload-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+}
+
+/* Progress */
+.progress-container {
+  text-align: center;
+  padding: 2rem;
+}
+
+.progress-bar {
+  width: 100%;
+  height: 12px;
+  background: var(--bg-tertiary);
+  border-radius: 6px;
+  overflow: hidden;
+  margin: 1.5rem 0;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent-primary), var(--accent-hover));
+  transition: width 0.3s ease;
+}
+
+.progress-text {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--accent-primary);
+  margin: 1rem 0;
+}
+
+.progress-steps {
+  text-align: left;
+  margin-top: 2rem;
+}
+
+.progress-steps p {
+  padding: 0.5rem 0;
+  color: var(--text-secondary);
+}
+
+/* Success/Error States */
+.success-container,
+.error-container {
+  text-align: center;
+  padding: 2rem;
+}
+
+.success-icon,
+.error-icon {
+  font-size: 4rem;
+  margin-bottom: 1rem;
+}
+
+.success-icon {
+  color: var(--accent-success);
+}
+
+.error-icon {
+  color: var(--accent-error);
+}
+
+.result-details {
+  background: var(--bg-tertiary);
+  padding: 1.5rem;
+  border-radius: 8px;
+  margin: 1.5rem 0;
+  text-align: left;
+}
+
+.detail-item {
+  margin-bottom: 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.detail-item:last-child {
+  border-bottom: none;
+  margin-bottom: 0;
+}
+
+.detail-item.encryption-key {
+  background: rgba(245, 158, 11, 0.1);
+  padding: 1rem;
+  border-radius: 8px;
+  border: 1px solid var(--accent-warning);
+}
+
+.key-display {
+  width: 100%;
+  font-family: 'Courier New', monospace;
+  font-size: 0.85rem;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  padding: 0.75rem;
+  border-radius: 6px;
+  resize: vertical;
+  margin: 0.5rem 0;
+}
+
+.warning-text {
+  color: var(--accent-warning);
+  font-weight: 600;
+}
+
+/* Asset Grid */
+.asset-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 1.5rem;
+  margin-top: 1.5rem;
+}
+
+.asset-card {
+  background: var(--bg-card);
+  border-radius: 12px;
+  border: 1px solid var(--border-color);
+  overflow: hidden;
+  transition: all 0.2s;
+}
+
+.asset-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-lg);
+  border-color: var(--accent-primary);
+}
+
+.asset-image {
+  width: 100%;
+  height: 200px;
+  background: linear-gradient(135deg, var(--bg-secondary), var(--bg-tertiary));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.asset-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.asset-placeholder {
+  font-size: 5rem;
+  opacity: 0.3;
+}
+
+.asset-info {
+  padding: 1.25rem;
+}
+
+.asset-title {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin: 0 0 0.75rem 0;
+  color: var(--text-primary);
+}
+
+.asset-description {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  line-height: 1.5;
+  margin-bottom: 1rem;
+}
+
+.asset-attributes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.attribute-badge {
+  display: inline-block;
+  padding: 0.25rem 0.6rem;
+  background: var(--bg-tertiary);
+  border-radius: 6px;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+
+.asset-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.token-id,
+.file-count {
+  font-family: 'Courier New', monospace;
+}
+
+.asset-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+/* Asset Detail Modal */
+.asset-detail-modal {
+  max-width: 700px;
+  width: 90%;
+}
+
+.detail-section {
+  margin-bottom: 2rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.detail-section:last-child {
+  border-bottom: none;
+}
+
+.detail-section h4 {
+  margin: 0 0 1rem 0;
+  color: var(--text-primary);
+}
+
+.attributes-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 1rem;
+}
+
+.attribute-item {
+  background: var(--bg-tertiary);
+  padding: 0.75rem;
+  border-radius: 8px;
+}
+
+.attr-label {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.25rem;
+}
+
+.attr-value {
+  display: block;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.files-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.file-item {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.75rem;
+  background: var(--bg-tertiary);
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+}
+
+.file-icon {
+  font-size: 2rem;
+}
+
+.file-info {
+  flex: 1;
+}
+
+.file-name {
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 0.25rem;
+}
+
+.file-meta {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+/* Transfer Modal */
+.transfer-modal {
+  max-width: 500px;
+  width: 90%;
+}
+
+/* Utility */
+.monospace {
+  font-family: 'Courier New', monospace;
+}
+
+.small {
+  font-size: 0.85rem;
+}
+
+.error-message {
+  color: var(--accent-error);
+  background: rgba(239, 68, 68, 0.15);
+  padding: 0.75rem;
+  border-radius: 6px;
+  margin: 1rem 0;
+}
+
+@media (max-width: 768px) {
+  .asset-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .form-row {
+    grid-template-columns: 1fr;
+  }
+  
+  .asset-upload-modal {
+    max-width: 95%;
+  }
+  
+  .header-actions {
+    flex-direction: column;
+    width: 100%;
+  }
+  
+  .page-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+}
+
