@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { ipfsToHttp, fetchMetadataFromIPFS } from '../utils/ipfsService';
+import { decryptData } from '../utils/encryption';
 import AssetUpload from '../components/AssetUpload';
 
 export default function AssetManagement({ 
@@ -13,6 +14,9 @@ export default function AssetManagement({
   const [showUpload, setShowUpload] = useState(false);
   const [selectedAsset, setSelectedAsset] = useState(null);
   const [assetMetadata, setAssetMetadata] = useState({});
+  const [decryptedData, setDecryptedData] = useState({});
+  const [decryptKey, setDecryptKey] = useState('');
+  const [showDecryptModal, setShowDecryptModal] = useState(null);
   const [transferTo, setTransferTo] = useState('');
   const [showTransfer, setShowTransfer] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -76,6 +80,58 @@ export default function AssetManagement({
   const downloadFile = (ipfsUri, filename) => {
     const httpUrl = ipfsToHttp(ipfsUri);
     window.open(httpUrl, '_blank');
+  };
+
+  const handleDecrypt = async (tokenId) => {
+    if (!decryptKey) {
+      alert('Vui lòng nhập encryption key');
+      return;
+    }
+
+    try {
+      const metadata = assetMetadata[tokenId];
+      if (!metadata || !metadata.encryption) {
+        alert('Asset này không có dữ liệu mã hóa');
+        return;
+      }
+
+      console.log('🔓 Decrypting data for token', tokenId);
+
+      // Import key from base64
+      const keyData = Uint8Array.from(atob(decryptKey), c => c.charCodeAt(0));
+      const cryptoKey = await crypto.subtle.importKey(
+        'raw',
+        keyData,
+        { name: 'AES-GCM', length: 256 },
+        false,
+        ['decrypt']
+      );
+
+      // Decrypt fields
+      const decrypted = {};
+      
+      if (metadata.encryption.encryptedFields.includes('description')) {
+        decrypted.description = await decryptData(metadata.description, cryptoKey);
+      }
+
+      const valueAttr = metadata.attributes?.find(a => a.trait_type === 'Estimated Value');
+      if (valueAttr && metadata.encryption.encryptedFields.includes('estimatedValue')) {
+        decrypted.estimatedValue = await decryptData(valueAttr.value, cryptoKey);
+      }
+
+      setDecryptedData(prev => ({
+        ...prev,
+        [tokenId]: decrypted
+      }));
+
+      setShowDecryptModal(null);
+      setDecryptKey('');
+      alert('✅ Giải mã thành công!');
+
+    } catch (error) {
+      console.error('Decrypt error:', error);
+      alert('❌ Lỗi giải mã: Key không đúng hoặc dữ liệu bị lỗi');
+    }
   };
 
   return (
@@ -160,6 +216,15 @@ export default function AssetManagement({
                     >
                       Xem chi tiết
                     </button>
+                    {metadata?.encryption && (
+                      <button
+                        onClick={() => setShowDecryptModal(nft.tokenId)}
+                        className="btn-small btn-warning"
+                        title="Giải mã dữ liệu"
+                      >
+                        🔓 Decrypt
+                      </button>
+                    )}
                     <button 
                       onClick={() => setShowTransfer(nft.tokenId)}
                       className="btn-small btn-secondary"
@@ -207,7 +272,13 @@ export default function AssetManagement({
                     </div>
                     <div className="detail-row">
                       <span className="detail-label">Mô tả:</span>
-                      <span className="detail-value">{assetMetadata[selectedAsset].description}</span>
+                      <span className="detail-value">
+                        {decryptedData[selectedAsset]?.description || assetMetadata[selectedAsset].description}
+                        {assetMetadata[selectedAsset].encryption?.encryptedFields.includes('description') && 
+                         !decryptedData[selectedAsset]?.description && 
+                         <span className="encrypted-badge"> 🔒 Đã mã hóa</span>
+                        }
+                      </span>
                     </div>
                     <div className="detail-row">
                       <span className="detail-label">Người tạo:</span>
@@ -360,6 +431,54 @@ export default function AssetManagement({
                   {loading ? 'Đang chuyển...' : 'Xác nhận chuyển nhượng'}
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Decrypt Modal */}
+      {showDecryptModal && (
+        <div className="modal-overlay" onClick={() => setShowDecryptModal(null)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>🔓 Giải mã dữ liệu</h3>
+              <button className="modal-close" onClick={() => setShowDecryptModal(null)}>✕</button>
+            </div>
+            
+            <div className="modal-body">
+              <p className="text-secondary mb-2">
+                Nhập encryption key để giải mã các trường dữ liệu đã được mã hóa.
+              </p>
+              
+              <div className="form-group">
+                <label>Encryption Key (Base64)</label>
+                <textarea
+                  value={decryptKey}
+                  onChange={(e) => setDecryptKey(e.target.value)}
+                  placeholder="Nhập key bạn đã lưu khi upload..."
+                  rows={4}
+                  className="form-control"
+                  style={{ fontFamily: 'monospace', fontSize: '0.9rem' }}
+                />
+              </div>
+
+              <div className="alert alert-info">
+                ℹ️ Key này được tạo khi bạn upload tài sản với tùy chọn "Encrypt sensitive data". 
+                Bạn cần lưu key này để có thể giải mã dữ liệu sau này.
+              </div>
+            </div>
+
+            <div className="modal-actions">
+              <button onClick={() => setShowDecryptModal(null)} className="btn-secondary">
+                Hủy
+              </button>
+              <button
+                onClick={() => handleDecrypt(showDecryptModal)}
+                className="btn-primary"
+                disabled={!decryptKey}
+              >
+                🔓 Giải mã
+              </button>
             </div>
           </div>
         </div>

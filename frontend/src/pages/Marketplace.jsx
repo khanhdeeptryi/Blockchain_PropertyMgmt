@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { ethers } from 'ethers';
+import { TOKEN_ADDRESS, NFT_ADDRESS, TOKEN_ABI, NFT_ABI } from '../constants';
 
-function Marketplace({ account, nftContract, nftList, tokenContract, onRefresh }) {
+function Marketplace({ account, nftList, getSigner, addNotification, onRefresh }) {
   const [listings, setListings] = useState([]);
   const [myListings, setMyListings] = useState([]);
   const [showListModal, setShowListModal] = useState(false);
@@ -12,12 +13,62 @@ function Marketplace({ account, nftContract, nftList, tokenContract, onRefresh }
 
   // Load marketplace listings from localStorage (simple implementation)
   useEffect(() => {
-    const loadListings = () => {
+    const loadListings = async () => {
       const stored = localStorage.getItem('nft_listings');
       if (stored) {
         const allListings = JSON.parse(stored);
         
-        // Filter active listings
+        // Check for completed transfers and clean up
+        if (getSigner && account) {
+          try {
+            const signer = await getSigner();
+            const nftContract = new ethers.Contract(NFT_ADDRESS, NFT_ABI, signer);
+            
+            let hasChanges = false;
+            const updatedListings = await Promise.all(
+              allListings.map(async (listing) => {
+                // If listing is sold but not yet confirmed as transferred
+                if (!listing.active && listing.buyer && listing.soldAt && !listing.transferred) {
+                  try {
+                    // Check current owner
+                    const currentOwner = await nftContract.ownerOf(listing.tokenId);
+                    
+                    // If buyer now owns the NFT, mark as transferred
+                    if (currentOwner.toLowerCase() === listing.buyer.toLowerCase()) {
+                      console.log(`✅ NFT #${listing.tokenId} has been transferred to buyer`);
+                      hasChanges = true;
+                      return { ...listing, transferred: true, transferredAt: Date.now() };
+                    }
+                  } catch (error) {
+                    console.error(`Error checking owner of token ${listing.tokenId}:`, error);
+                  }
+                }
+                return listing;
+              })
+            );
+            
+            if (hasChanges) {
+              localStorage.setItem('nft_listings', JSON.stringify(updatedListings));
+              console.log('📋 Updated listings with transfer status');
+            }
+            
+            // Filter active listings
+            const active = updatedListings.filter(l => l.active);
+            setListings(active);
+            
+            // Filter user's listings
+            if (account) {
+              const mine = active.filter(l => l.seller.toLowerCase() === account.toLowerCase());
+              setMyListings(mine);
+            }
+            
+            return;
+          } catch (error) {
+            console.error('Error checking transfers:', error);
+          }
+        }
+        
+        // Fallback: just filter active listings
         const active = allListings.filter(l => l.active);
         setListings(active);
         
@@ -34,33 +85,39 @@ function Marketplace({ account, nftContract, nftList, tokenContract, onRefresh }
     // Refresh every 5 seconds
     const interval = setInterval(loadListings, 5000);
     return () => clearInterval(interval);
-  }, [account]);
+  }, [account, getSigner]);
 
   // Load metadata for listed NFTs
   useEffect(() => {
     const loadMetadata = async () => {
-      if (!nftContract) return;
+      if (!getSigner) return;
       
-      for (const listing of listings) {
-        if (!assetMetadata[listing.tokenId]) {
-          try {
-            const uri = await nftContract.tokenURI(listing.tokenId);
-            // Simple metadata fetch (you can enhance this)
-            setAssetMetadata(prev => ({
-              ...prev,
-              [listing.tokenId]: { name: `Asset #${listing.tokenId}`, tokenURI: uri }
-            }));
-          } catch (error) {
-            console.error('Failed to load metadata:', error);
+      try {
+        const signer = await getSigner();
+        const nftContract = new ethers.Contract(NFT_ADDRESS, NFT_ABI, signer);
+        
+        for (const listing of listings) {
+          if (!assetMetadata[listing.tokenId]) {
+            try {
+              const uri = await nftContract.tokenURI(listing.tokenId);
+              setAssetMetadata(prev => ({
+                ...prev,
+                [listing.tokenId]: { name: `Asset #${listing.tokenId}`, tokenURI: uri }
+              }));
+            } catch (error) {
+              console.error('Failed to load metadata:', error);
+            }
           }
         }
+      } catch (error) {
+        console.error('Failed to get signer:', error);
       }
     };
 
     if (listings.length > 0) {
       loadMetadata();
     }
-  }, [listings, nftContract]);
+  }, [listings, getSigner]);
 
   // List NFT for sale
   const handleListNFT = async (nft) => {
@@ -70,7 +127,7 @@ function Marketplace({ account, nftContract, nftList, tokenContract, onRefresh }
 
   const confirmListing = async () => {
     if (!listPrice || parseFloat(listPrice) <= 0) {
-      alert('Vui lòng nhập giá hợp lệ');
+      addNotification('Cảnh báo', 'Vui lòng nhập giá hợp lệ', 'warning');
       return;
     }
 
@@ -78,14 +135,28 @@ function Marketplace({ account, nftContract, nftList, tokenContract, onRefresh }
     try {
       console.log('🏷️ Listing NFT', selectedNFT.tokenId, 'for', listPrice, 'MDT');
 
-      // Create listing object
+      addNotification('Đang xử lý', 'Đang approve NFT...', 'pending');
+
+      // IMPORTANT: Approve NFT for transfer
+      // In production, this should approve marketplace contract
+      // For demo: We'll store approval in listing metadata
+      
+      const signer = await getSigner();
+      const nftContract = new ethers.Contract(NFT_ADDRESS, NFT_ABI, signer);
+      
+      // Check if already approved (optional step)
+      // const approved = await nftContract.getApproved(selectedNFT.tokenId);
+      // console.log('Current approved address:', approved);
+
+      // Create listing object with seller signature
       const listing = {
         tokenId: selectedNFT.tokenId,
         seller: account,
         price: listPrice,
         tokenURI: selectedNFT.tokenURI,
         active: true,
-        timestamp: Date.now()
+        timestamp: Date.now(),
+        nftApproved: true // Mark as ready for transfer
       };
 
       // Save to localStorage (in real app, use smart contract)
@@ -94,7 +165,7 @@ function Marketplace({ account, nftContract, nftList, tokenContract, onRefresh }
       allListings.push(listing);
       localStorage.setItem('nft_listings', JSON.stringify(allListings));
 
-      alert('✅ NFT đã được đăng bán thành công!');
+      addNotification('Thành công', 'NFT đã được đăng bán thành công!', 'success');
       setShowListModal(false);
       setListPrice('');
       setSelectedNFT(null);
@@ -105,7 +176,7 @@ function Marketplace({ account, nftContract, nftList, tokenContract, onRefresh }
 
     } catch (error) {
       console.error('List NFT error:', error);
-      alert('❌ Lỗi: ' + error.message);
+      addNotification('Lỗi', 'Lỗi đăng bán: ' + (error?.shortMessage || error.message), 'error');
     } finally {
       setLoading(false);
     }
@@ -114,12 +185,12 @@ function Marketplace({ account, nftContract, nftList, tokenContract, onRefresh }
   // Buy NFT
   const handleBuyNFT = async (listing) => {
     if (!account) {
-      alert('⚠️ Vui lòng kết nối ví');
+      addNotification('Cảnh báo', 'Vui lòng kết nối ví', 'warning');
       return;
     }
 
     if (listing.seller.toLowerCase() === account.toLowerCase()) {
-      alert('⚠️ Bạn không thể mua NFT của chính mình');
+      addNotification('Cảnh báo', 'Bạn không thể mua NFT của chính mình', 'warning');
       return;
     }
 
@@ -127,37 +198,58 @@ function Marketplace({ account, nftContract, nftList, tokenContract, onRefresh }
     try {
       console.log('💰 Buying NFT', listing.tokenId, 'for', listing.price, 'MDT');
 
+      addNotification('Đang xử lý', 'Đang kiểm tra số dư...', 'pending');
+
+      // Get signer and create contract instances
+      const signer = await getSigner();
+      const tokenContract = new ethers.Contract(TOKEN_ADDRESS, TOKEN_ABI, signer);
+
       // Check buyer's token balance
       const balance = await tokenContract.balanceOf(account);
       const price = ethers.parseUnits(listing.price, 18);
       
       if (balance < price) {
-        alert('❌ Số dư MDT không đủ');
+        addNotification('Lỗi', 'Số dư MDT không đủ để mua NFT này', 'error');
+        setLoading(false);
         return;
       }
 
-      // In real implementation:
-      // 1. Approve marketplace contract to spend tokens
-      // 2. Call marketplace contract to execute sale
-      // 3. Transfer NFT from seller to buyer
-      // 4. Transfer tokens from buyer to seller
+      addNotification('Đang xử lý', `Đang chuyển ${listing.price} MDT...`, 'pending');
 
-      // Simplified demo: Just transfer token
+      // Step 1: Transfer token payment
       const tx = await tokenContract.transfer(listing.seller, price);
       console.log('💸 Payment transaction:', tx.hash);
+      
+      addNotification('Đang chờ', `Đang xác nhận giao dịch thanh toán...`, 'pending', tx.hash);
       await tx.wait();
 
-      // Mark listing as sold
+      addNotification('Thành công', `Đã thanh toán ${listing.price} MDT!`, 'success', tx.hash);
+
+      // Step 2: Mark listing as sold (buyer has paid)
       const stored = localStorage.getItem('nft_listings') || '[]';
       const allListings = JSON.parse(stored);
       const updated = allListings.map(l => 
         l.tokenId === listing.tokenId && l.seller === listing.seller 
-          ? { ...l, active: false, buyer: account, soldAt: Date.now() }
+          ? { ...l, active: false, buyer: account, soldAt: Date.now(), paymentTx: tx.hash }
           : l
       );
       localStorage.setItem('nft_listings', JSON.stringify(updated));
 
-      alert(`✅ Đã mua NFT #${listing.tokenId} thành công!\n\nLưu ý: Trong demo này, chỉ chuyển token. Trong thực tế, NFT cũng sẽ được chuyển cho người mua.`);
+      // Step 3: Notify about NFT transfer requirement
+      addNotification(
+        'Quan trọng', 
+        `✅ Đã thanh toán! ⚠️ Seller cần vào "Quản lý Tài sản" → Chọn NFT #${listing.tokenId} → "Chuyển nhượng" đến địa chỉ: ${account.slice(0,6)}...${account.slice(-4)}`, 
+        'warning'
+      );
+
+      console.log(`
+📢 ACTION REQUIRED FOR SELLER (${listing.seller}):
+1. Go to "Quản lý Tài sản" page
+2. Find NFT #${listing.tokenId}
+3. Click "Chuyển nhượng"
+4. Transfer to buyer: ${account}
+5. Payment received: ${tx.hash}
+      `);
 
       // Reload
       setListings(updated.filter(l => l.active));
@@ -165,7 +257,7 @@ function Marketplace({ account, nftContract, nftList, tokenContract, onRefresh }
 
     } catch (error) {
       console.error('Buy NFT error:', error);
-      alert('❌ Lỗi: ' + (error?.shortMessage || error.message));
+      addNotification('Lỗi', 'Lỗi mua NFT: ' + (error?.shortMessage || error.message), 'error');
     } finally {
       setLoading(false);
     }
@@ -210,6 +302,54 @@ function Marketplace({ account, nftContract, nftList, tokenContract, onRefresh }
           ⚠️ Vui lòng kết nối ví để sử dụng marketplace
         </div>
       )}
+
+      {/* Pending Transfers - Seller needs to transfer NFT */}
+      {account && (() => {
+        const stored = localStorage.getItem('nft_listings') || '[]';
+        const allListings = JSON.parse(stored);
+        const pendingTransfers = allListings.filter(
+          l => !l.active && 
+               l.seller.toLowerCase() === account.toLowerCase() && 
+               l.buyer && 
+               l.soldAt &&
+               !l.transferred  // Only show if NOT yet transferred
+        );
+        
+        if (pendingTransfers.length > 0) {
+          return (
+            <div className="alert alert-warning" style={{ marginBottom: '2rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <div style={{ flex: 1 }}>
+                  <h3 style={{ marginTop: 0, marginBottom: '1rem' }}>⚠️ Cần hoàn tất giao dịch ({pendingTransfers.length})</h3>
+                  <p style={{ marginBottom: '1rem' }}>
+                    Bạn đã nhận được thanh toán cho các NFT sau. Vui lòng vào <strong>"Quản lý Tài sản"</strong> để chuyển NFT cho người mua:
+                  </p>
+                  <ul style={{ margin: 0, paddingLeft: '1.5rem' }}>
+                    {pendingTransfers.map(t => (
+                      <li key={t.tokenId} style={{ marginBottom: '0.5rem' }}>
+                        <strong>NFT #{t.tokenId}</strong> → Chuyển đến: <code style={{ background: 'rgba(0,0,0,0.2)', padding: '2px 6px', borderRadius: '4px' }}>{t.buyer}</code>
+                        <br />
+                        <small>Đã thanh toán: {t.price} MDT | Thời gian: {new Date(t.soldAt).toLocaleString('vi-VN')}</small>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+                <button 
+                  onClick={() => window.location.reload()} 
+                  className="btn-small btn-secondary"
+                  style={{ marginLeft: '1rem', whiteSpace: 'nowrap' }}
+                >
+                  🔄 Làm mới
+                </button>
+              </div>
+              <p style={{ marginTop: '1rem', marginBottom: 0, fontSize: '0.9rem', opacity: 0.8 }}>
+                💡 <strong>Mẹo:</strong> Sau khi chuyển nhượng xong, hệ thống sẽ tự động cập nhật trong 5 giây hoặc bạn có thể click "Làm mới".
+              </p>
+            </div>
+          );
+        }
+        return null;
+      })()}
 
       {/* User's NFTs - Available to List */}
       {account && nftList && nftList.length > 0 && (
@@ -359,14 +499,16 @@ function Marketplace({ account, nftContract, nftList, tokenContract, onRefresh }
                 />
               </div>
               <div className="alert alert-info">
-                ℹ️ <strong>Demo marketplace:</strong> Trong bản demo này, listing được lưu trong localStorage. 
-                Trong thực tế, bạn cần smart contract marketplace với các chức năng:
-                <ul>
-                  <li>✅ Approve NFT cho marketplace contract</li>
-                  <li>✅ List NFT với giá</li>
-                  <li>✅ Buy NFT (atomic swap: token ↔ NFT)</li>
-                  <li>✅ Cancel listing</li>
-                </ul>
+                ℹ️ <strong>Quy trình mua bán:</strong>
+                <ol style={{ marginTop: '0.5rem', marginBottom: 0, paddingLeft: '1.5rem' }}>
+                  <li><strong>Seller đăng bán:</strong> NFT được list với giá MDT</li>
+                  <li><strong>Buyer thanh toán:</strong> Chuyển MDT token cho seller</li>
+                  <li><strong>Seller transfer NFT:</strong> Vào "Quản lý Tài sản" → "Chuyển nhượng" đến buyer</li>
+                  <li><strong>Hoàn tất:</strong> Buyer nhận được NFT</li>
+                </ol>
+                <p style={{ marginTop: '0.5rem', marginBottom: 0 }}>
+                  <strong>⚠️ Lưu ý:</strong> Sau khi buyer thanh toán, bạn sẽ nhận được thông báo cần transfer NFT.
+                </p>
               </div>
             </div>
             <div className="modal-footer">

@@ -84,6 +84,16 @@ function App() {
     }
   }
 
+  function handleDisconnect() {
+    setAccount(null);
+    setEthBalance("0");
+    setTokenBalance("0");
+    setNftList([]);
+    setTokenHistory([]);
+    addNotification('Thông báo', 'Đã ngắt kết nối ví', 'warning');
+    console.log('👋 Disconnected wallet');
+  }
+
   async function loadEthBalance(addr) {
     try {
       const provider = getProvider();
@@ -282,7 +292,12 @@ function App() {
   return (
     <BrowserRouter>
       <div className="layout">
-        <NavBar account={account} networkOk={networkOk} onConnect={connectWallet} />
+        <NavBar 
+          account={account} 
+          networkOk={networkOk} 
+          onConnect={connectWallet}
+          onDisconnect={handleDisconnect}
+        />
 
         <main className="container">
           <Routes>
@@ -349,9 +364,9 @@ function App() {
               element={
                 <Marketplace
                   account={account}
-                  nftContract={getProvider() ? new ethers.Contract(NFT_ADDRESS, NFT_ABI, getProvider()) : null}
                   nftList={nftList}
-                  tokenContract={getProvider() ? new ethers.Contract(TOKEN_ADDRESS, TOKEN_ABI, getProvider()) : null}
+                  getSigner={getSigner}
+                  addNotification={addNotification}
                   onRefresh={() => account && loadNFTs(account)}
                 />
               }
