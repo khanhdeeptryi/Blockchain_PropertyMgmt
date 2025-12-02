@@ -34,6 +34,9 @@ export default function NavBar({ account, networkOk, onConnect }) {
         <NavLink to="/assets" className={({isActive}) => isActive ? 'active' : ''}>
           Quản lý Tài sản
         </NavLink>
+        <NavLink to="/marketplace" className={({isActive}) => isActive ? 'active' : ''}>
+          Chuyển nhượng tài sản
+        </NavLink>
       </nav>
 
       <div className="nav-center">

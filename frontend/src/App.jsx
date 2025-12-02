@@ -7,6 +7,7 @@ import Dashboard from "./pages/Dashboard";
 import TokenPage from "./pages/Token";
 import NFTPage from "./pages/NFT";
 import AssetManagement from "./pages/AssetManagement";
+import Marketplace from "./pages/Marketplace";
 import "./App.css";
 
 function App() {
@@ -340,6 +341,18 @@ function App() {
                   onRefresh={() => account && loadNFTs(account)}
                   onMintAsset={handleMintAsset}
                   onTransferAsset={handleTransferAsset}
+                />
+              }
+            />
+            <Route
+              path="/marketplace"
+              element={
+                <Marketplace
+                  account={account}
+                  nftContract={getProvider() ? new ethers.Contract(NFT_ADDRESS, NFT_ABI, getProvider()) : null}
+                  nftList={nftList}
+                  tokenContract={getProvider() ? new ethers.Contract(TOKEN_ADDRESS, TOKEN_ABI, getProvider()) : null}
+                  onRefresh={() => account && loadNFTs(account)}
                 />
               }
             />
