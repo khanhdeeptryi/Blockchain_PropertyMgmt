@@ -143,7 +143,7 @@ export default function AssetManagement({
             🔄 Làm mới
           </button>
           <button onClick={() => setShowUpload(true)} className="btn-primary">
-            ➕ Đăng ký tài sản mới
+            Đăng ký tài sản mới
           </button>
         </div>
       </div>
